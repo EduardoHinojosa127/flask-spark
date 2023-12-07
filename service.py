@@ -8,19 +8,22 @@ app = Flask(__name__)
 data_queue = Queue()
 spark_logic = SparkLogic(data_queue)
 
-@app.route('/receive_data', methods=['POST'])
+@app.route('/procesar', methods=['POST'])
 def receive_data():
-    data = request.get_data().decode('utf-8')
+    data = request.get_json()
     print("Received data:", data)
     # Coloca los datos en la cola
     data_queue.put(data)
-    # Devuelve la respuesta como un JSON
-    return "data enviada"
+    spark_logic.restart_spark_thread()
+    vecino = spark_logic.get_nearest_neighbor_info()
+    pelicula = spark_logic.get_pelicula_recomendada_info()
+    respuesta = {
+        'vecino_mas_cercano': vecino,
+        'pelicula_recomendada': pelicula,
+	    'usuario_recibido': data['usuario'],
+    }
 
-@app.route('/get_nearest_neighbor_info', methods=['GET'])
-def get_nearest_neighbor_info():
-    nearest_neighbor_info = spark_logic.get_nearest_neighbor_info()
-    return jsonify(nearest_neighbor_info)
+    return jsonify(respuesta)
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5000)
